@@ -126,7 +126,9 @@ func main() {
 			// Useful for RESTful design.
 			nameRouter.Use(nameExtractor)
 
+			// GET /api/ignacio
 			nameRouter.Get("/", greet)
+			// GET /api/ignacio/goodbye
 			nameRouter.Get("/goodbye", goodbye)
 		}
 	}
