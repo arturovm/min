@@ -1,3 +1,0 @@
-package: github.com/ArturoVM/min
-import:
-- package: github.com/julienschmidt/httprouter
