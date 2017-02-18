@@ -18,6 +18,7 @@ You can initialize a new instance of the `Min` type with an `httprouter.Router` 
 
 ``` go
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/ArturoVM/min"
@@ -32,7 +33,7 @@ func main() {
 }
 
 func helloWorld(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("hello world!"))
+	fmt.Fprintln(w, "hello world!")
 }
 ```
 
@@ -58,7 +59,7 @@ func main() {
 
 func greet(w http.ResponseWriter, r *http.Request) {
 	name := min.GetParam(r, "name")
-	w.Write([]byte(fmt.Sprintf("hello %s!", name)))
+	fmt.Fprintf(w, "hello %s!", name)
 }
 ```
 
@@ -87,12 +88,12 @@ func main() {
 }
 
 func apiRoot(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte("api root"))
+	fmt.Fprintln(w, "api root")
 }
 
 func greet(w http.ResponseWriter, r *http.Request) {
 	name := min.GetParam(r, "name")
-	w.Write([]byte(fmt.Sprintf("hello %s!", name)))
+	fmt.Fprintf(w, "hello %s!", name)
 }
 ```
 
@@ -105,6 +106,7 @@ Middleware in `min` are simply functions that take an `http.Handler` (the one ne
 ``` go
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -116,7 +118,7 @@ func main() {
 	m.Use(logger)
 	m.Use(printer)
 
-	apiRouter := r.Group("/api")
+	apiRouter := m.Group("/api")
 	{
 		apiRouter.Get("/", apiRoot)
 		nameRouter := apiRouter.Group("/:name")
@@ -132,6 +134,8 @@ func main() {
 			nameRouter.Get("/goodbye", goodbye)
 		}
 	}
+
+	http.ListenAndServe(":8080", m)
 }
 
 // -- Middleware --
@@ -163,16 +167,20 @@ func nameExtractor(next http.Handler) http.Handler {
 
 // -- Handlers --
 
+func apiRoot(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintln(w, "api root")
+}
+
 // greets the user with :name
 func greet(w http.ResponseWriter, r *http.Request) {
 	name := r.Context().Value("name").(string)
-	w.Write([]byte("hello " + name + "!"))
+	fmt.Fprintf(w, "hello %s!", name)
 }
 
 // says "bye" to the user with :name
 func goodbye(w http.ResponseWriter, r *http.Request) {
 	name := r.Context().Value("name").(string)
-	w.Write([]byte("bye " + name + "!"))
+	fmt.Fprintf(w, "bye %s!", name)
 }
 ```
 
