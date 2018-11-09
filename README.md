@@ -34,7 +34,7 @@ import (
     "fmt"
     "net/http"
 
-    "github.com/ArturoVM/min"
+    "github.com/arturovm/min"
 )
 
 func main() {
@@ -61,7 +61,7 @@ import (
     "fmt"
     "net/http"
 
-    "github.com/ArturoVM/min"
+    "github.com/arturovm/min"
 )
 
 func main() {
@@ -85,7 +85,7 @@ import (
     "fmt"
     "net/http"
 
-    "github.com/ArturoVM/min"
+    "github.com/arturovm/min"
 )
 
 func main() {
@@ -128,7 +128,7 @@ import (
     "log"
     "net/http"
 
-    "github.com/ArturoVM/min"
+    "github.com/arturovm/min"
 )
 
 func main() {
@@ -209,7 +209,7 @@ If you need access to the underlying `httprouter.Router`, you can use the
 
 ``` go
 import (
-    "github.com/ArturoVM/min"
+    "github.com/arturovm/min"
 )
 
 func main() {
