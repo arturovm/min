@@ -34,8 +34,9 @@ var _ = Describe("Route Grouping", func() {
 			api.Patch("/catch/*catchall", catchAllHandler)
 			api.Delete("/resource1", noContentHandler)
 			api.Head("/", noContentHandler)
+			api.Options("/", noContentHandler)
 		}
-		ts := httptest.NewServer(r)
+		ts := httptest.NewServer(api)
 		defer ts.Close()
 		When("I make a GET request to the route /api", func() {
 			resp, err := http.Get(ts.URL + "/api")
@@ -86,6 +87,15 @@ var _ = Describe("Route Grouping", func() {
 
 		When("I make a HEAD request to the route /api", func() {
 			resp, err := http.Head(ts.URL + "/api")
+			Then("an HTTP response with a 204 status code should be returned", func() {
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+			})
+		})
+
+		When("I make an OPTIONS request to the route /api", func() {
+			req, _ := http.NewRequest(http.MethodOptions, ts.URL+"/api", nil)
+			resp, err := http.DefaultClient.Do(req)
 			Then("an HTTP response with a 204 status code should be returned", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
