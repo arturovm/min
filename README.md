@@ -1,16 +1,18 @@
 # min
 
-_Just the bare minimum._
+v0.1.1
 
 [![GoDoc](https://godoc.org/github.com/arturovm/min?status.svg)](https://godoc.org/github.com/arturovm/min)
 [![Go Report Card](https://goreportcard.com/badge/github.com/arturovm/min)](https://goreportcard.com/report/github.com/arturovm/min)
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg)]()
+[![Build Status](https://travis-ci.com/arturovm/min.svg?branch=master)](https://travis-ci.com/arturovm/min)
+[![Codecov](https://img.shields.io/codecov/c/github/arturovm/min.svg)](https://codecov.io/gh/arturovm/min)
+![GitHub](https://img.shields.io/github/license/arturovm/min.svg)
 
 `min` is a BYO\*, minimalistic web framework that harnesses the power of
 `context` and [`httprouter`](https://github.com/julienschmidt/httprouter), and
 adds some functionality on top—namely, middleware chaining and route grouping.
 It's meant to be used on projects large and small that require flexibility, and
-varying degrees of custom code and architecture. We provide the routing, you
+varying degrees of custom code and architecture. `min` provides the routing, you
 provide the app.
 
 This package takes some inspiration from design decisions in [`chi`](https://github.com/pressly/chi)
@@ -218,8 +220,3 @@ func main() {
     _ = m.GetBaseRouter()
 }
 ```
-
-## TODO
-
-- [ ] Write tests
-- [ ] Write benchmarks
