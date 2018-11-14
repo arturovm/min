@@ -116,6 +116,21 @@ var _ = Describe("Router", func() {
 		})
 	})
 
+	Given("a router with a root-level handler for OPTIONS requests", func() {
+		r := min.New(nil)
+		r.Options("/", noContentHandler)
+		ts := httptest.NewServer(r)
+		defer ts.Close()
+		When("I make an OPTIONS request to the server's root", func() {
+			req, _ := http.NewRequest(http.MethodOptions, ts.URL, nil)
+			resp, err := http.DefaultClient.Do(req)
+			Then("an HTTP response with a 204 status code should be returned", func() {
+				Expect(err).ToNot(HaveOccurred())
+				Expect(resp.StatusCode).To(Equal(http.StatusNoContent))
+			})
+		})
+	})
+
 	Given("a router initialized with an existing httprouter.Router", func() {
 		rr := httprouter.New()
 		r := min.New(rr)
