@@ -1,4 +1,10 @@
 language: go
 
 go:
-  - "1.x"
+  - 1.x
+
+script:
+  - go test -race -coverprofile=coverage.txt -covermode=count
+
+after_success:
+  - bash <(curl -s https://codecov.io/bash)
