@@ -2,13 +2,9 @@ package min
 
 import "net/http"
 
-// Handler represents anything that can be used to register routes
+// Handler represents a type that can register handlers for a given HTTP verb
+// and path.
 type Handler interface {
-	Post(string, http.HandlerFunc)
-	Get(string, http.HandlerFunc)
-	Put(string, http.HandlerFunc)
-	Patch(string, http.HandlerFunc)
-	Delete(string, http.HandlerFunc)
-	Head(string, http.HandlerFunc)
-	Options(string, http.HandlerFunc)
+	http.Handler
+	Handle(method, path string, handler http.Handler)
 }

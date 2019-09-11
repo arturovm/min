@@ -2,94 +2,75 @@ package min
 
 import (
 	"net/http"
-	_path "path"
+	"path"
+
+	"github.com/arturovm/min/middleware"
 )
 
-// Groupable enables route composition
-type Groupable interface {
-	Group(string) Router
+// Group represents a route group that shares a middleware chain and a common
+// path.
+type Group struct {
+	Path    string
+	handler Handler
+	parent  *Group
+	chain   middleware.Middleware
 }
 
-// group is a concrete route group
-type group struct {
-	root  string
-	super Router
-	chain func(http.Handler) http.Handler
-}
-
-// Group defines a route group on top of the current group
-func (g *group) Group(root string) Router {
-	return &group{
-		root:  root,
-		super: g,
+// NewGroup creates a new subgroup of group g.
+func (g *Group) NewGroup(path string) *Group {
+	return &Group{
+		Path:    path,
+		handler: g.handler,
+		parent:  g,
 	}
 }
 
-// Use adds a middleware to the group's middleware chain
-func (g *group) Use(f func(http.Handler) http.Handler) {
-	if g.chain == nil {
-		g.chain = f
-		return
-	}
-	g.chain = compose(f, g.chain)
+// Parent gets the group's parent in the group tree.
+func (g *Group) Parent() *Group {
+	return g.parent
 }
 
-// Post registers a handler for POST requests
-func (g *group) Post(path string, handler http.HandlerFunc) {
+// FullPath returns the group's full path in the group tree (as opposed to this
+// group's sub-path)
+func (g *Group) FullPath() string {
+	if g.parent == nil {
+		return g.Path
+	}
+	return path.Join(g.parent.FullPath(), g.Path)
+}
+
+func (g *Group) Use(m middleware.Middleware) {
+	g.chain = m
+}
+
+func (g *Group) handle(method, relativePath string, handler http.Handler) {
 	if g.chain != nil {
-		handler = g.chain(handler).ServeHTTP
+		handler = g.chain(handler)
 	}
-	g.super.Post(_path.Join(g.root, path), handler)
+	g.handler.Handle(method, path.Join(g.FullPath(), relativePath), handler)
 }
 
-// Get registers a handler for GET requests
-func (g *group) Get(path string, handler http.HandlerFunc) {
-	if g.chain != nil {
-		handler = g.chain(handler).ServeHTTP
-	}
-	g.super.Get(_path.Join(g.root, path), handler)
+// Get registers a handler for GET requests on the given relative path.
+func (g *Group) Get(relativePath string, handler http.Handler) {
+	g.handle(http.MethodGet, relativePath, handler)
 }
 
-// Put registers a handler for PUT requests
-func (g *group) Put(path string, handler http.HandlerFunc) {
-	if g.chain != nil {
-		handler = g.chain(handler).ServeHTTP
-	}
-	g.super.Put(_path.Join(g.root, path), handler)
+// Post registers a handler for POST requests on the given relative path.
+func (g *Group) Post(relativePath string, handler http.Handler) {
+	g.handle(http.MethodPost, relativePath, handler)
 }
 
-// Patch registers a handler for PATCH requests
-func (g *group) Patch(path string, handler http.HandlerFunc) {
-	if g.chain != nil {
-		handler = g.chain(handler).ServeHTTP
-	}
-	g.super.Patch(_path.Join(g.root, path), handler)
+// Put registers a handler for PUT requests on the given relative path.
+func (g *Group) Put(relativePath string, handler http.Handler) {
+	g.handle(http.MethodPut, relativePath, handler)
 }
 
-// Delete registers a handler for DELETE requests
-func (g *group) Delete(path string, handler http.HandlerFunc) {
-	if g.chain != nil {
-		handler = g.chain(handler).ServeHTTP
-	}
-	g.super.Delete(_path.Join(g.root, path), handler)
+// Patch registers a handler for PATCH requests on the given relative path.
+func (g *Group) Patch(relativePath string, handler http.Handler) {
+	g.handle(http.MethodPatch, relativePath, handler)
 }
 
-// Head registers a handler for HEAD requests
-func (g *group) Head(path string, handler http.HandlerFunc) {
-	if g.chain != nil {
-		handler = g.chain(handler).ServeHTTP
-	}
-	g.super.Head(_path.Join(g.root, path), handler)
-}
-
-// Options registers a handler for OPTIONS requests
-func (g *group) Options(path string, handler http.HandlerFunc) {
-	if g.chain != nil {
-		handler = g.chain(handler).ServeHTTP
-	}
-	g.super.Options(_path.Join(g.root, path), handler)
-}
-
-func (g *group) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	g.super.ServeHTTP(w, req)
+// Delete registers a handler for DELETE requests on the given relative path.
+func (g *Group) Delete(relativePath string, handler http.Handler) {
+	g.handle(http.MethodDelete, relativePath, handler)
 }
