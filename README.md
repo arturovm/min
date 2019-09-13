@@ -27,9 +27,9 @@ does a lot of magic. It relies heavily on `context` and regular types from
 
 ### Hello World
 
-You can initialize a new instance of the `Min` type with an `httprouter.Router`
-you provide, or you can pass `nil` to `min.New` and a new, default router will
-be created.
+You can initialize a new instance of the `Min` type with whichever router you
+provide that implements `min.Handler`. A convenience adapter that
+wraps around `httprouter.Router` is included.
 
 ``` go
 import (
@@ -37,10 +37,12 @@ import (
     "net/http"
 
     "github.com/arturovm/min"
+    "github.com/arturovm/min/adapter"
 )
 
 func main() {
-    m := min.New(nil)
+	a := &adapter.Httprouter{Router: httprouter.New()}
+    m := min.New(a)
 
     m.Get("/", helloWorld)
 
@@ -55,30 +57,7 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 ### Route Parameters
 
 `min` supports all the syntax variations for defining route parameters that
-`httprouter` does. You then simply use the helper function `min.GetParam` to
-access them.
-
-``` go
-import (
-    "fmt"
-    "net/http"
-
-    "github.com/arturovm/min"
-)
-
-func main() {
-    m := min.New(nil)
-
-    m.Get("/:name", greet)
-
-    http.ListenAndServe(":8080", m)
-}
-
-func greet(w http.ResponseWriter, r *http.Request) {
-    name := min.GetParam(r, "name")
-    fmt.Fprintf(w, "hello %s!", name)
-}
-```
+the underlying router does.
 
 ### Route Grouping
 
@@ -88,10 +67,12 @@ import (
     "net/http"
 
     "github.com/arturovm/min"
+    "github.com/arturovm/min/adapter"
 )
 
 func main() {
-    m := min.New(nil)
+	a := &adapter.Httprouter{Router: httprouter.New()}
+    m := min.New(a)
 
     apiRouter := m.Group("/api")
     {
@@ -118,7 +99,8 @@ func greet(w http.ResponseWriter, r *http.Request) {
 
 Middleware in `min` are simply functions that take an `http.Handler` (the one
 next in the chain) and return another one. They are resolved in the order that
-they are declared.
+they are declared. You can compose them together with the `Middleware.Then`
+method.
 
 `min` users are meant to take advantage of `context` to make better use of
 middleware.
