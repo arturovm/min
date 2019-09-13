@@ -3,8 +3,6 @@ package min
 import (
 	"net/http"
 	"path"
-
-	"github.com/arturovm/min/middleware"
 )
 
 // Group represents a route group that shares a middleware chain and a common
@@ -13,7 +11,7 @@ type Group struct {
 	Path    string
 	handler Handler
 	parent  *Group
-	chain   middleware.Middleware
+	chain   Middleware
 }
 
 // NewGroup creates a new subgroup of group g.
@@ -39,7 +37,7 @@ func (g *Group) FullPath() string {
 	return path.Join(g.parent.FullPath(), g.Path)
 }
 
-func (g *Group) Use(m middleware.Middleware) {
+func (g *Group) Use(m Middleware) {
 	g.chain = m
 }
 

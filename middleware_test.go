@@ -12,6 +12,50 @@ import (
 	"github.com/arturovm/min/adapter"
 )
 
+func TestCreateMiddleware(t *testing.T) {
+	mw := min.Middleware(func(next http.Handler) http.Handler {
+		return nil
+	})
+	require.NotNil(t, mw)
+}
+
+func TestRunMiddleware(t *testing.T) {
+	var result string
+	mw := min.Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result += "Hello, "
+			next.ServeHTTP(w, r)
+		})
+	})
+	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result += "world!"
+	})).ServeHTTP(nil, nil)
+
+	require.Equal(t, "Hello, world!", result)
+}
+
+func TestComposeMiddleware(t *testing.T) {
+	var result string
+	first := min.Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result += "Hello, "
+			next.ServeHTTP(w, r)
+		})
+	})
+	second := min.Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result += "world "
+			next.ServeHTTP(w, r)
+		})
+	})
+	mw := first.Then(second)
+	mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result += "again!"
+	})).ServeHTTP(nil, nil)
+
+	require.Equal(t, "Hello, world again!", result)
+}
+
 func TestUseMiddleware(t *testing.T) {
 	h := &adapter.Httprouter{Router: httprouter.New()}
 	m := min.New(h)
