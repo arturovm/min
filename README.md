@@ -1,6 +1,6 @@
 # min
 
-v0.1.1
+v1.0.0
 
 [![GoDoc](https://godoc.org/github.com/arturovm/min?status.svg)](https://godoc.org/github.com/arturovm/min)
 [![Go Report Card](https://goreportcard.com/badge/github.com/arturovm/min)](https://goreportcard.com/report/github.com/arturovm/min)
@@ -8,40 +8,41 @@ v0.1.1
 [![Codecov](https://img.shields.io/codecov/c/github/arturovm/min.svg)](https://codecov.io/gh/arturovm/min)
 ![GitHub](https://img.shields.io/github/license/arturovm/min.svg)
 
-`min` is a BYO\*, minimalistic web framework that harnesses the power of
-`context` and [`httprouter`](https://github.com/julienschmidt/httprouter), and
-adds some functionality on top—namely, middleware chaining and route grouping.
-It's meant to be used on projects large and small that require flexibility, and
-varying degrees of custom code and architecture. `min` provides the routing, you
-provide the app.
+`min` is a BYO\*, minimalistic web framework that builds on top of your router
+of choice and adds some additional functionality—namely, middleware chaining
+and route grouping. It's meant to be used on projects large and small that
+require flexibility, and varying degrees of custom code and architecture.
 
-This package takes some inspiration from design decisions in [`chi`](https://github.com/pressly/chi)
-and [`gin`](https://github.com/gin-gonic/gin).
+This version of `min` integrates some of the lessons I've learned recently. For
+this release, I decided to focus on orthogonality and composability, and took a
+"pure" TDD approach to the API rewrite. The result is a much smaller library
+with the same functionality, minus some unnecessary abstractions.
+
+This package takes some inspiration from design decisions in
+[`chi`](https://github.com/pressly/chi) and
+[`gin`](https://github.com/gin-gonic/gin).
 
 ## Usage
 
-`min` is designed to be as elegant and as close to "the right way to do things"
-as possible. Which means that it doesn't implement a lot of custom types, or
-does a lot of magic. It relies heavily on `context` and regular types from
-`net/http`.
-
 ### Hello World
 
-You can initialize a new instance of the `Min` type with whichever router you
-provide that implements `min.Handler`. A convenience adapter that
-wraps around `httprouter.Router` is included.
+You can initialize a new instance of the `Min` type with whichever type that
+implements `min.Handler`. An adapter for
+[`httprouter`](https://github.com/julienschmidt/httprouter) is included.
 
 ``` go
 import (
     "fmt"
     "net/http"
 
+    "github.com/julienschmidt/httprouter"
+
     "github.com/arturovm/min"
     "github.com/arturovm/min/adapter"
 )
 
 func main() {
-	a := &adapter.Httprouter{Router: httprouter.New()}
+    a := &adapter.Httprouter{Router: httprouter.New()}
     m := min.New(a)
 
     m.Get("/", helloWorld)
@@ -57,7 +58,33 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 ### Route Parameters
 
 `min` supports all the syntax variations for defining route parameters that
-the underlying router does.
+the underlying router does. For instance, in the case of `httprouter`:
+
+```go
+import (
+    "fmt"
+    "net/http"
+
+    "github.com/julienschmidt/httprouter"
+
+    "github.com/arturovm/min"
+    "github.com/arturovm/min/adapter"
+)
+
+func main() {
+    a := &adapter.Httprouter{Router: httprouter.New()}
+    m := min.New(a)
+
+    m.Get("/:name", greet)
+
+    http.ListenAndServe(":8080", m)
+}
+
+func greet(w http.ResponseWriter, r *http.Request) {
+    name := httprouter.ParamsFromContext(r.Context()).ByName("name")
+    fmt.Fprintf(w, "hello %s!", name)
+}
+```
 
 ### Route Grouping
 
@@ -66,15 +93,17 @@ import (
     "fmt"
     "net/http"
 
+    "github.com/julienschmidt/httprouter"
+
     "github.com/arturovm/min"
     "github.com/arturovm/min/adapter"
 )
 
 func main() {
-	a := &adapter.Httprouter{Router: httprouter.New()}
+    a := &adapter.Httprouter{Router: httprouter.New()}
     m := min.New(a)
 
-    apiRouter := m.Group("/api")
+    apiRouter := m.NewGroup("/api")
     {
         // GET /api
         apiRouter.Get("/", apiRoot)
@@ -90,7 +119,7 @@ func apiRoot(w http.ResponseWriter, r *http.Request) {
 }
 
 func greet(w http.ResponseWriter, r *http.Request) {
-    name := min.GetParam(r, "name")
+    name := httprouter.ParamsFromContext(r.Context()).ByName("name")
     fmt.Fprintf(w, "hello %s!", name)
 }
 ```
@@ -99,7 +128,7 @@ func greet(w http.ResponseWriter, r *http.Request) {
 
 Middleware in `min` are simply functions that take an `http.Handler` (the one
 next in the chain) and return another one. They are resolved in the order that
-they are declared. You can compose them together with the `Middleware.Then`
+they are chained. You can chian them together with the `Middleware.Then`
 method.
 
 `min` users are meant to take advantage of `context` to make better use of
@@ -112,18 +141,23 @@ import (
     "log"
     "net/http"
 
+    "github.com/julienschmidt/httprouter"
+
     "github.com/arturovm/min"
+    "github.com/arturovm/min/adapter"
 )
 
 func main() {
-    m := min.New(nil)
-    m.Use(logger)
-    m.Use(printer)
+    a := &adapter.Httprouter{Router: httprouter.New()}
+    m := min.New(a)
 
-    apiRouter := m.Group("/api")
+    chain := min.Middleware(logger).Then(printer)
+    m.Use(chain)
+
+    apiRouter := m.NewGroup("/api")
     {
         apiRouter.Get("/", apiRoot)
-        nameRouter := apiRouter.Group("/:name")
+        nameRouter := apiRouter.NewGroup("/:name")
         {
             // Every request sent to routes defined on this sub-router will now
             // have a reference to a name in its context.
@@ -161,7 +195,7 @@ func printer(next http.Handler) http.Handler {
 // extracts a name from the URL and injects it into the request's context
 func nameExtractor(next http.Handler) http.Handler {
     return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-        name := min.GetParam(r, "name")
+        name := httprouter.ParamsFromContext(r.Context()).ByName("name")
         ctx := context.WithValue(r.Context(), "name", name)
         next.ServeHTTP(w, r.WithContext(ctx))
     })
@@ -183,22 +217,5 @@ func greet(w http.ResponseWriter, r *http.Request) {
 func goodbye(w http.ResponseWriter, r *http.Request) {
     name := r.Context().Value("name").(string)
     fmt.Fprintf(w, "bye %s!", name)
-}
-```
-
-### Base Router
-
-If you need access to the underlying `httprouter.Router`, you can use the
-`GetBaseRouter` method.
-
-``` go
-import (
-    "github.com/arturovm/min"
-)
-
-func main() {
-    m := min.New(nil)
-
-    _ = m.GetBaseRouter()
 }
 ```
