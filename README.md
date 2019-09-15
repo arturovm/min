@@ -128,7 +128,7 @@ func greet(w http.ResponseWriter, r *http.Request) {
 
 Middleware in `min` are simply functions that take an `http.Handler` (the one
 next in the chain) and return another one. They are resolved in the order that
-they are chained. You can chian them together with the `Middleware.Then`
+they are chained. You can chain them together with the `Middleware.Then`
 method.
 
 `min` users are meant to take advantage of `context` to make better use of
