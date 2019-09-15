@@ -67,11 +67,18 @@ func TestUseMiddleware(t *testing.T) {
 			next.ServeHTTP(w, r)
 		})
 	}
+	secondMw := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			count++
+			next.ServeHTTP(w, r)
+		})
+	}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		count++
 	})
 
 	m.Use(mw)
+	m.Use(secondMw)
 	m.Get("/test", handler)
 	m.Post("/test", handler)
 
@@ -81,5 +88,5 @@ func TestUseMiddleware(t *testing.T) {
 	_, _ = http.Get(ts.URL + "/test")
 	_, _ = http.Post(ts.URL+"/test", "text/plain", nil)
 
-	require.Equal(t, int8(4), count)
+	require.Equal(t, int8(6), count)
 }

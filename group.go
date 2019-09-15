@@ -37,9 +37,14 @@ func (g *Group) FullPath() string {
 	return path.Join(g.parent.FullPath(), g.Path)
 }
 
-// Use sets this group's middleware chain. Each call to Use replaces the entire chain.
+// Use sets this group's middleware chain. Each call to Use appends to the
+// chain.
 func (g *Group) Use(m Middleware) {
-	g.chain = m
+	if g.chain == nil {
+		g.chain = m
+		return
+	}
+	g.chain = g.chain.Then(m)
 }
 
 func (g *Group) handle(method, relativePath string, handler http.Handler) {
