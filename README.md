@@ -1,6 +1,6 @@
 # min
 
-v1.0.0
+v1.0.1
 
 [![GoDoc](https://godoc.org/github.com/arturovm/min?status.svg)](https://godoc.org/github.com/arturovm/min)
 [![Go Report Card](https://goreportcard.com/badge/github.com/arturovm/min)](https://goreportcard.com/report/github.com/arturovm/min)
