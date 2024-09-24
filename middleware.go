@@ -16,3 +16,16 @@ func (m Middleware) Then(mw Middleware) Middleware {
 		return m(mw(h))
 	}
 }
+func connect(handler http.Handler, mw Middleware) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Run handler and gather effects. In a future implementation, we
+		// could catch writes to ResponseWriter by passing a bridge type
+		// here with an internal buffer and then dumping that buffer onto
+		// ResponseWritter.
+		handler.ServeHTTP(w, r)
+		// Commit effects. This noop is simply the chain's end point.
+		mw(http.HandlerFunc(noop)).ServeHTTP(w, r)
+	})
+}
+
+func noop(_ http.ResponseWriter, _ *http.Request) {}

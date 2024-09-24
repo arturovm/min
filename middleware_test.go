@@ -1,6 +1,7 @@
 package min_test
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -131,4 +132,108 @@ func TestUseMiddlewareWithGroups(t *testing.T) {
 	_, _ = http.Get(ts.URL + "/group/test")
 
 	require.Equal(t, "first, second, handler", result)
+}
+
+func TestEntryMiddleware(t *testing.T) {
+	var result string
+	first := min.Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result += "Hello, "
+			next.ServeHTTP(w, r)
+		})
+	})
+	second := min.Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result += "world, "
+			next.ServeHTTP(w, r)
+		})
+	})
+	mw := first.Then(second)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result += "once more!"
+	})
+
+	h := &adapter.Httprouter{Router: httprouter.New()}
+	m := min.New(h)
+
+	m.Entry(mw)
+	m.Get("/hello", handler)
+
+	ts := httptest.NewServer(m)
+	defer ts.Close()
+
+	_, _ = http.Get(ts.URL + "/hello")
+
+	require.Equal(t, "Hello, world, once more!", result)
+}
+
+func TestExitMiddleware(t *testing.T) {
+	var result string
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		result += "Goodbye"
+
+		w.Header().Set("x-greeting", "hello :)")
+		w.WriteHeader(http.StatusCreated)
+		w.Write([]byte("a little greeting"))
+	})
+	first := min.Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result += ", "
+			next.ServeHTTP(w, r)
+		})
+	})
+	second := min.Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result += "my "
+			next.ServeHTTP(w, r)
+		})
+	})
+	third := min.Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result += "good "
+			next.ServeHTTP(w, r)
+		})
+	})
+	fourth := min.Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result += "friends"
+			next.ServeHTTP(w, r)
+		})
+	})
+	fifth := min.Middleware(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			result += "!"
+			next.ServeHTTP(w, r)
+		})
+	})
+
+	h := &adapter.Httprouter{Router: httprouter.New()}
+	m := min.New(h)
+
+	m.Exit(fourth)
+	m.Exit(fifth)
+	group := m.NewGroup("/")
+	{
+		mw := second.Then(third)
+		group.Exit(mw)
+		emptyGroup := group.NewGroup("/")
+		{
+			anotherEmptyGroup := emptyGroup.NewGroup("/")
+			{
+				anotherEmptyGroup.Exit(first)
+				anotherEmptyGroup.Get("/hello", handler)
+			}
+		}
+	}
+
+	ts := httptest.NewServer(m)
+	defer ts.Close()
+
+	response, _ := http.Get(ts.URL + "/hello")
+	responseBody, _ := io.ReadAll(response.Body)
+
+	require.Equal(t, "Goodbye, my good friends!", result)
+	require.Equal(t, http.StatusCreated, response.StatusCode)
+	require.Equal(t, "hello :)", response.Header.Get("x-greeting"))
+	require.Equal(t, []byte("a little greeting"), responseBody)
 }

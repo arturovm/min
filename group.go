@@ -8,10 +8,11 @@ import (
 // Group represents a route group that shares a middleware chain and a common
 // path.
 type Group struct {
-	Path    string
-	handler Handler
-	parent  *Group
-	chain   Middleware
+	Path       string
+	handler    Handler
+	parent     *Group
+	entryChain Middleware
+	exitChain  Middleware
 }
 
 // NewGroup creates a new subgroup of group g.
@@ -40,33 +41,70 @@ func (g *Group) FullPath() string {
 // Use sets this group's middleware chain. Each call to Use appends to the
 // chain.
 func (g *Group) Use(m Middleware) {
-	if g.chain == nil {
-		g.chain = m
+	g.Entry(m)
+}
+
+// Entry sets this group's entry middleware chain. Entry middleware is executed
+// from the start of the request and hands off to the handler. Each call to Entry
+// appends to the entry chain.
+func (g *Group) Entry(m Middleware) {
+	if g.entryChain == nil {
+		g.entryChain = m
 		return
 	}
-	g.chain = g.chain.Then(m)
+	g.entryChain = g.entryChain.Then(m)
+}
+
+// Exit sets this group's exit middleware chain. Exit middleware is executed
+// from after the handler has returned, up until the response is written. Each
+// call to Exit appends to the exit chain.
+func (g *Group) Exit(m Middleware) {
+	if g.exitChain == nil {
+		g.exitChain = m
+		return
+	}
+	g.exitChain = g.exitChain.Then(m)
 }
 
 func (g *Group) handle(method, relativePath string, handler http.Handler) {
-	middlewareChain := g.fullChain()
-	if middlewareChain != nil {
-		handler = middlewareChain(handler)
+	entryChain := g.fullEntryChain()
+	if entryChain != nil {
+		handler = entryChain(handler)
+	}
+
+	exitChain := g.fullExitChain()
+	if exitChain != nil {
+		handler = connect(handler, exitChain)
 	}
 	g.handler.Handle(method, path.Join(g.FullPath(), relativePath), handler)
 }
 
-func (g *Group) fullChain() Middleware {
-	if g.parent == nil && g.chain == nil {
+func (g *Group) fullEntryChain() Middleware {
+	if g.parent == nil && g.entryChain == nil {
 		return nil
 	}
 	if g.parent == nil {
-		return g.chain
+		return g.entryChain
 	}
-	parentChain := g.parent.fullChain()
+	parentChain := g.parent.fullEntryChain()
 	if parentChain == nil {
-		return g.chain
+		return g.entryChain
 	}
-	return parentChain.Then(g.chain)
+	return parentChain.Then(g.entryChain)
+}
+
+func (g *Group) fullExitChain() Middleware {
+	if g.parent == nil && g.exitChain == nil {
+		return nil
+	}
+	if g.parent == nil {
+		return g.exitChain
+	}
+	parentChain := g.parent.fullExitChain()
+	if g.exitChain == nil {
+		return parentChain
+	}
+	return g.exitChain.Then(parentChain)
 }
 
 // Get registers a handler for GET requests on the given relative path.
