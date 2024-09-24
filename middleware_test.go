@@ -95,30 +95,29 @@ func TestUseMiddlewareWithGroups(t *testing.T) {
 	h := &adapter.Httprouter{Router: httprouter.New()}
 	m := min.New(h)
 
-	var count int8
+	var result string
 	mw := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			count++
+			result += "first, "
 			next.ServeHTTP(w, r)
 		})
 	}
 	secondMw := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			count++
+			result += "second, "
 			next.ServeHTTP(w, r)
 		})
 	}
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		count++
+		result += "handler"
 	})
 
 	m.Use(mw)
-	m.Use(secondMw)
 	m.Get("/test", handler)
-	m.Post("/test", handler)
 
 	group := m.NewGroup("/group")
 	{
+		group.Use(secondMw)
 		group.Get("/test", handler)
 	}
 
@@ -126,8 +125,8 @@ func TestUseMiddlewareWithGroups(t *testing.T) {
 	defer ts.Close()
 
 	_, _ = http.Get(ts.URL + "/test")
-	_, _ = http.Post(ts.URL+"/test", "text/plain", nil)
+	result += "; "
 	_, _ = http.Get(ts.URL + "/group/test")
 
-	require.Equal(t, int8(9), count)
+	require.Equal(t, "first, handler; first, second, handler", result)
 }

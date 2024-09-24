@@ -48,11 +48,11 @@ func (g *Group) Use(m Middleware) {
 }
 
 func (g *Group) handle(method, relativePath string, handler http.Handler) {
-	if g.parent != nil && g.parent.chain != nil {
-		handler = g.parent.chain(handler)
-	}
 	if g.chain != nil {
 		handler = g.chain(handler)
+	}
+	if g.parent != nil && g.parent.chain != nil {
+		handler = g.parent.chain(handler)
 	}
 	g.handler.Handle(method, path.Join(g.FullPath(), relativePath), handler)
 }
