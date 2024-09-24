@@ -31,6 +31,8 @@ implements `min.Handler`. An adapter for
 [`httprouter`](https://github.com/julienschmidt/httprouter) is included.
 
 ``` go
+package main
+
 import (
     "fmt"
     "net/http"
@@ -45,7 +47,7 @@ func main() {
     a := &adapter.Httprouter{Router: httprouter.New()}
     m := min.New(a)
 
-    m.Get("/", helloWorld)
+    m.Get("/", http.HandlerFunc(helloWorld))
 
     http.ListenAndServe(":8080", m)
 }
@@ -61,6 +63,8 @@ func helloWorld(w http.ResponseWriter, r *http.Request) {
 the underlying router does. For instance, in the case of `httprouter`:
 
 ```go
+package main
+
 import (
     "fmt"
     "net/http"
@@ -75,7 +79,7 @@ func main() {
     a := &adapter.Httprouter{Router: httprouter.New()}
     m := min.New(a)
 
-    m.Get("/:name", greet)
+    m.Get("/:name", http.HandlerFunc(greet))
 
     http.ListenAndServe(":8080", m)
 }
@@ -89,6 +93,8 @@ func greet(w http.ResponseWriter, r *http.Request) {
 ### Route Grouping
 
 ``` go
+package main
+
 import (
     "fmt"
     "net/http"
@@ -106,9 +112,9 @@ func main() {
     apiRouter := m.NewGroup("/api")
     {
         // GET /api
-        apiRouter.Get("/", apiRoot)
+        apiRouter.Get("/", http.HandlerFunc(apiRoot))
         // GET /api/ignacio
-        apiRouter.Get("/:name", greet)
+        apiRouter.Get("/:name", http.HandlerFunc(greet))
     }
 
     http.ListenAndServe(":8080", m)
@@ -135,6 +141,8 @@ method.
 middleware.
 
 ``` go
+package main
+
 import (
     "context"
     "fmt"
@@ -156,7 +164,7 @@ func main() {
 
     apiRouter := m.NewGroup("/api")
     {
-        apiRouter.Get("/", apiRoot)
+        apiRouter.Get("/", http.HandlerFunc(apiRoot))
         nameRouter := apiRouter.NewGroup("/:name")
         {
             // Every request sent to routes defined on this sub-router will now
@@ -165,9 +173,9 @@ func main() {
             nameRouter.Use(nameExtractor)
 
             // GET /api/ignacio
-            nameRouter.Get("/", greet)
+            nameRouter.Get("/", http.HandlerFunc(greet))
             // GET /api/ignacio/goodbye
-            nameRouter.Get("/goodbye", goodbye)
+            nameRouter.Get("/goodbye", http.HandlerFunc(goodbye))
         }
     }
 
