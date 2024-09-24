@@ -48,13 +48,25 @@ func (g *Group) Use(m Middleware) {
 }
 
 func (g *Group) handle(method, relativePath string, handler http.Handler) {
-	if g.chain != nil {
-		handler = g.chain(handler)
-	}
-	if g.parent != nil && g.parent.chain != nil {
-		handler = g.parent.chain(handler)
+	middlewareChain := g.fullChain()
+	if middlewareChain != nil {
+		handler = middlewareChain(handler)
 	}
 	g.handler.Handle(method, path.Join(g.FullPath(), relativePath), handler)
+}
+
+func (g *Group) fullChain() Middleware {
+	if g.parent == nil && g.chain == nil {
+		return nil
+	}
+	if g.parent == nil {
+		return g.chain
+	}
+	parentChain := g.parent.fullChain()
+	if parentChain == nil {
+		return g.chain
+	}
+	return parentChain.Then(g.chain)
 }
 
 // Get registers a handler for GET requests on the given relative path.

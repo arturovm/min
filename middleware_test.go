@@ -112,21 +112,23 @@ func TestUseMiddlewareWithGroups(t *testing.T) {
 		result += "handler"
 	})
 
-	m.Use(mw)
-	m.Get("/test", handler)
-
 	group := m.NewGroup("/group")
 	{
-		group.Use(secondMw)
-		group.Get("/test", handler)
+		group.Use(mw)
+		emptyGroup := group.NewGroup("/")
+		{
+			anotherEmptyGroup := emptyGroup.NewGroup("/")
+			{
+				anotherEmptyGroup.Use(secondMw)
+				anotherEmptyGroup.Get("/test", handler)
+			}
+		}
 	}
 
 	ts := httptest.NewServer(m)
 	defer ts.Close()
 
-	_, _ = http.Get(ts.URL + "/test")
-	result += "; "
 	_, _ = http.Get(ts.URL + "/group/test")
 
-	require.Equal(t, "first, handler; first, second, handler", result)
+	require.Equal(t, "first, second, handler", result)
 }

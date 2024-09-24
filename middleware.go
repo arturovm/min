@@ -9,6 +9,9 @@ type Middleware func(http.Handler) http.Handler
 // Then composes middleware m with middleware mw, returning a Middleware that
 // first resolves m and then mw.
 func (m Middleware) Then(mw Middleware) Middleware {
+	if mw == nil {
+		return m
+	}
 	return func(h http.Handler) http.Handler {
 		return m(mw(h))
 	}
