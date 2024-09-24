@@ -137,6 +137,11 @@ next in the chain) and return another one. They are resolved in the order that
 they are chained. You can chain them together with the `Middleware.Then`
 method.
 
+Entry middleware is executed from the start of the request and hands off to the
+handler at the end of the chain. Exit middleware is executed from after the
+handler has returned onwards. You are free to keep using the `Group.Use` API,
+which has become synonymous with `Group.Entry`.
+
 `min` users are meant to take advantage of `context` to make better use of
 middleware.
 
@@ -145,6 +150,7 @@ package main
 
 import (
     "context"
+	"encoding/json"
     "fmt"
     "log"
     "net/http"
@@ -154,6 +160,11 @@ import (
     "github.com/arturovm/min"
     "github.com/arturovm/min/adapter"
 )
+
+type whiplashRequest struct {
+    Whip string `json:"whip"`
+    Lash string `json:"lash"`
+}
 
 func main() {
     a := &adapter.Httprouter{Router: httprouter.New()}
@@ -176,6 +187,14 @@ func main() {
             nameRouter.Get("/", http.HandlerFunc(greet))
             // GET /api/ignacio/goodbye
             nameRouter.Get("/goodbye", http.HandlerFunc(goodbye))
+			
+			whiplashRouter := nameRouter.NewGroup("/whiplash")
+			{
+			    // We can take advantage of generics and deserialize JSON data
+				// on every reqest sent to this sub-router.
+                whiplashRouter.Entry(deserializer[whiplashRequest])
+                whiplashRouter.Post("/", http.HandlerFunc(createWhiplash))
+            }
         }
     }
 
@@ -209,6 +228,21 @@ func nameExtractor(next http.Handler) http.Handler {
     })
 }
 
+func deserializer[T any](next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        var dst T
+        err := json.NewDecoder(r.Body).Decode(&dst)
+        if err != nil {
+            w.WriteHeader(http.StatusBadRequest)
+            return
+        }
+
+        ctx := context.WithValue(r.Context(), "data", dst)
+        next.ServeHTTP(w, r.WithContext(ctx))
+
+    })
+}
+
 // -- Handlers --
 
 func apiRoot(w http.ResponseWriter, r *http.Request) {
@@ -225,5 +259,11 @@ func greet(w http.ResponseWriter, r *http.Request) {
 func goodbye(w http.ResponseWriter, r *http.Request) {
     name := r.Context().Value("name").(string)
     fmt.Fprintf(w, "bye %s!", name)
+}
+
+// creates a whiplash thingamabob
+func createWhiplash(w http.ResponseWriter, r *http.Request) {
+    data := r.Context().Value("data").(whiplashRequest)
+    fmt.Fprintf(w, "whip: %s, lash: %s", data.Whip, data.Lash)
 }
 ```

@@ -39,14 +39,18 @@ func (g *Group) FullPath() string {
 }
 
 // Use sets this group's middleware chain. Each call to Use appends to the
-// chain.
+// chain. Calls Entry in v1.1.0
 func (g *Group) Use(m Middleware) {
 	g.Entry(m)
 }
 
 // Entry sets this group's entry middleware chain. Entry middleware is executed
-// from the start of the request and hands off to the handler. Each call to Entry
-// appends to the entry chain.
+// from the start of the request and hands off to the handler at the end.
+//
+// The ResponseWriter and Request passed along the chain are shared, which means
+// that their read & write state is preserved and the usual semantics apply.
+//
+// Each call to Entry appends to the entry chain.
 func (g *Group) Entry(m Middleware) {
 	if g.entryChain == nil {
 		g.entryChain = m
@@ -56,8 +60,12 @@ func (g *Group) Entry(m Middleware) {
 }
 
 // Exit sets this group's exit middleware chain. Exit middleware is executed
-// from after the handler has returned, up until the response is written. Each
-// call to Exit appends to the exit chain.
+// from after the handler has returned onwards.
+//
+// The ResponseWriter and Request passed along the chain are shared, which means
+// that their read & write state is preserved and the usual semantics apply.
+//
+// Each call to Exit appends to the exit chain.
 func (g *Group) Exit(m Middleware) {
 	if g.exitChain == nil {
 		g.exitChain = m
